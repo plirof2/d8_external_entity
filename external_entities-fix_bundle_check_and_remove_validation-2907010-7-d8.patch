@@ -1,0 +1,63 @@
+diff --git a/external_entities.module b/external_entities.module
+index 3609b58..bad5e4e 100644
+--- a/external_entities.module
++++ b/external_entities.module
+@@ -6,6 +6,7 @@
+ 
+ use Drupal\Component\Utility\Xss;
+ use Drupal\Core\Render\Element;
++use Drupal\Core\Form\FormStateInterface;
+ 
+ /**
+  * Implements hook_theme().
+@@ -66,3 +67,14 @@ function template_preprocess_external_entity(&$variables) {
+     $variables['content'][$key] = $variables['elements'][$key];
+   }
+ }
++
++/**
++ * Remove Cardinality Validation since external entities are not actually stored in the db.
++ */
++function external_entities_form_field_storage_config_edit_form_alter(&$form, FormStateInterface $form_state, $form_id) {
++  if (isset($form_state->getStorage()['entity_type_id']) && $form_state->getStorage()['entity_type_id'] == 'external_entity') {
++    if (isset($form['cardinality_container']['#element_validate']) && ($key = array_search('::validateCardinality', $form['cardinality_container']['#element_validate'])) !== false) {
++      unset($form['cardinality_container']['#element_validate'][$key]);
++    }
++  }
++}
+diff --git a/src/Entity/Query/External/Query.php b/src/Entity/Query/External/Query.php
+index 52c97d3..b2b33dd 100644
+--- a/src/Entity/Query/External/Query.php
++++ b/src/Entity/Query/External/Query.php
+@@ -124,7 +124,18 @@ class Query extends QueryBase implements QueryInterface {
+    *   Returns the called object.
+    */
+   protected function prepare() {
+-    if ($this->amountOfBundleConditions() !== 1) {
++    $amount_of_conditions = $this->amountOfBundleConditions();
++
++    // If no bundles are specified, it is possible that there is only one bundle available and there is not being set as a condition. In this case, grab the only bundle.
++    if ($amount_of_conditions == 0) {
++      $all_bundles = \Drupal::service('entity_type.bundle.info')->getBundleInfo($this->entityTypeId);
++      if (count($all_bundles) == 1) {
++        $entityType = \Drupal::entityTypeManager()->getDefinition($this->entityTypeId);
++        $keys = $entityType->getKeys();
++        $this->condition($keys['bundle'], key($all_bundles));
++      }
++    }
++    if ($amount_of_conditions > 1) {
+       throw new QueryException("You must specify a single bundle for external entity queries.");
+     }
+     $this->checkConditions();
+@@ -344,6 +355,11 @@ class Query extends QueryBase implements QueryInterface {
+         }
+       }
+     }
++    // If no bundles are specified, it is possible that there is only one bundle available and there is not being set as a condition. In this case, grab the only bundle.
++    $all_bundles = \Drupal::service('entity_type.bundle.info')->getBundleInfo($this->entityTypeId);
++    if (count($all_bundles) == 1) {
++      return key($all_bundles);
++    }
+     return FALSE;
+   }
+ }
