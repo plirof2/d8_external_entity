@@ -19,6 +19,7 @@ use Drupal\external_entities\ExternalEntityInterface;
  *     "storage" = "Drupal\external_entities\ExternalEntityStorage",
  *     "storage_schema" = "Drupal\external_entities\ExternalEntityStorageSchema",
  *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
+ *     "views_data" = "Drupal\dataextra\Entity\ExternalEntityViewsData",
  *     "access" = "Drupal\external_entities\ExternalEntityAccessControlHandler",
  *     "form" = {
  *       "default" = "Drupal\external_entities\ExternalEntityForm",
